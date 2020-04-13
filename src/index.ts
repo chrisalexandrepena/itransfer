@@ -3,10 +3,11 @@ import dotenv from 'dotenv';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { initDb } from './db';
-import morgan from 'morgan';
 import bodyParser from 'body-parser';
-import { logger } from './modules/logging';
+import requestIp from 'request-ip';
+import { logger, loggerMiddleware, errorLoggerMiddleware } from './modules/logging';
 import 'colors';
+import LinkController from './modules/linkGen/controllers/LinkController';
 
 if (existsSync(join(__dirname, '../.env'))) {
   dotenv.config({ path: join(__dirname, '../.env') });
@@ -16,16 +17,42 @@ if (existsSync(join(__dirname, '../.env'))) {
   logger.warn('no .env file found, resorting to defaults');
 }
 
+// tslint:disable-next-line: no-unused-expression
 (async () => {
   try {
     const app = express();
-    app.use(morgan(process.env.ENV === 'prod' ? 'tiny' : 'dev'));
     app.use(bodyParser.json());
     app.use(bodyParser.urlencoded({ extended: false }));
-    const db = await initDb();
+    app.use(requestIp.mw());
+    app.use(loggerMiddleware);
+    await initDb();
+
+    app.get('/', (req, res, next) => {
+      res.send("coucou l'ami");
+      next();
+    });
+    app.get('/download/:hash', (req, res, next) => {
+      LinkController.downloadFile(req, res, next).catch(next);
+    });
+    app.get('/links', (req, res, next) => {
+      LinkController.getAllLinks(req, res, next).catch(next);
+    });
+    app.post('/link/generate', (req, res, next) => {
+      LinkController.createLink(req, res, next).catch(next);
+    });
+    app.post('/links/generate', (req, res, next) => {
+      LinkController.createLinks(req, res, next).catch(next);
+    });
+
+    // Log and end request treatment
+    app.use(errorLoggerMiddleware);
+    app.use((err, req, res, next) => {
+      res.end(err.message);
+      return;
+    });
 
     app.listen(process.env.PORT || '8080', () => logger.info(`App listening on port ${process.env.PORT || '8080'}`));
   } catch (err) {
-    logger.error(err.message.red);
+    logger.error(err.message);
   }
 })();

@@ -8,8 +8,8 @@ module.exports = {
   username: process.env.DB_USER || 'user',
   password: process.env.DB_PASSWORD || 'password',
   database: process.env.DB_NAME || 'custom_wetransfer',
-  entities: ['src/db/entities/*.ts'],
-  migrations: ['src/db/migrations/*.ts'],
+  entities: ['lib/db/entities/*.js'],
+  migrations: ['lib/db/migrations/*.js'],
   cli: {
     entitiesDir: 'src/db/entities',
     migrationsDir: 'src/db/migrations',

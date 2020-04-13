@@ -1,14 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, CreateDateColumn, Column, OneToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, CreateDateColumn, Column, OneToOne, BaseEntity } from 'typeorm';
 import { Link } from './Link';
 
 type EventTypes = 'download' | 'generate_link';
 
 @Entity()
-export class Event {
+export class Event extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ update: false })
   created_at: Date;
 
   @Column({ type: 'enum', enum: ['download', 'generate_link'] })
