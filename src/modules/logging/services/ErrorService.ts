@@ -7,7 +7,7 @@ class ErrorService {
     try {
       await ErrorRepository.insertError(error);
     } catch (err) {
-      logger.log('error', err.stack, { json: true });
+      logger.log('error', err.stack);
     }
   }
 }
