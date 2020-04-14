@@ -1,7 +1,7 @@
 import LinkService from '../services/LinkService';
 import { Link } from '../../../db/entities/Link';
 import { Request, Response, NextFunction } from 'express';
-import { existsSync } from 'fs';
+import { existsSync, readdirSync, statSync } from 'fs';
 import moment from 'moment';
 import { logger } from '../../../modules/logging';
 import { parse, join } from 'path';
@@ -35,9 +35,12 @@ class LinkController {
   }
 
   async createLink(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const links: Link[] = [];
     try {
       let { filePath } = req.body;
       const expirationDate = moment(req.body.expirationDate);
+
+      // Error checks
       if (!filePath) {
         res.status(400);
         throw new Error('request must contain a filePath');
@@ -49,11 +52,31 @@ class LinkController {
         res.status(400);
         throw new Error('requested file does not exists');
       }
-      const link = await LinkService.generateUniqueLink(filePath, expirationDate.isValid() ? expirationDate : undefined);
-      await LinkService.insertLink(link);
-      res.status(200).send(link.getUrl());
-      next();
+
+      // Managing Link
+      if (statSync(filePath).isDirectory()) {
+        const files = readdirSync(filePath)
+          .filter((file) => statSync(join(filePath, file)).isFile())
+          .map((file) => join(filePath, file));
+        for (const file of files) {
+          const link = await LinkService.generateUniqueLink(file, expirationDate.isValid() ? expirationDate : undefined);
+          await LinkService.insertLink(link);
+          links.push(link);
+        }
+        res.json(links.map((link) => link.getUrl()));
+        next();
+      } else {
+        const link = await LinkService.generateUniqueLink(filePath, expirationDate.isValid() ? expirationDate : undefined);
+        await LinkService.insertLink(link);
+        res.status(200).send(link.getUrl());
+        next();
+      }
     } catch (err) {
+      if (links?.length) {
+        for (const link of links) {
+          await LinkService.deleteLink(link);
+        }
+      }
       next(err);
     }
   }
@@ -64,6 +87,7 @@ class LinkController {
     const expirationDate = moment(req.body.expirationDate);
     try {
       for (let filePath of filePaths) {
+        // Error checks
         if (!filePath) {
           res.status(400);
           throw new Error('request must contain no empty filePaths');
@@ -75,9 +99,22 @@ class LinkController {
           res.status(400);
           throw new Error("one or more requested files don't exist");
         }
-        const link = await LinkService.generateUniqueLink(filePath, expirationDate.isValid() ? expirationDate : undefined);
-        await LinkService.insertLink(link);
-        links.push(link);
+
+        // Managing links
+        if (statSync(filePath).isDirectory()) {
+          const files = readdirSync(filePath)
+            .filter((file) => statSync(join(filePath, file)).isFile())
+            .map((file) => join(filePath, file));
+          for (const file of files) {
+            const link = await LinkService.generateUniqueLink(file, expirationDate.isValid() ? expirationDate : undefined);
+            await LinkService.insertLink(link);
+            links.push(link);
+          }
+        } else {
+          const link = await LinkService.generateUniqueLink(filePath, expirationDate.isValid() ? expirationDate : undefined);
+          await LinkService.insertLink(link);
+          links.push(link);
+        }
       }
     } catch (err) {
       for (const link of links) {
