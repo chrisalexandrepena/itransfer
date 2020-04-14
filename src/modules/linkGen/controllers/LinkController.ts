@@ -29,7 +29,7 @@ class LinkController {
       next(new Error('link is invalid, file not found on server'));
       return;
     }
-    logger.info(`${req.clientIp} is downloading file ${parse(link.file).base}`.bgCyan);
+    logger.info(`${req.clientIp} is downloading file ${parse(link.file).base}`.cyan);
     res.download(link.file, parse(link.file).base);
     return;
   }
