@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import { existsSync } from 'fs';
 import moment from 'moment';
 import { logger } from '../../../modules/logging';
-import { parse } from 'path';
+import { parse, join } from 'path';
 
 class LinkController {
   async getAllLinks(req: Request, res: Response, next: NextFunction) {
@@ -36,16 +36,22 @@ class LinkController {
 
   async createLink(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { filePath } = req.body;
+      let { filePath } = req.body;
       const expirationDate = moment(req.body.expirationDate);
-      if (!filePath || !existsSync(filePath)) {
+      if (!filePath) {
         res.status(400);
-        throw new Error('request must contain a valid filePath');
+        throw new Error('request must contain a filePath');
+      }
+      if (!/^\//gi.test(filePath) && process.env.SHARED_DIR) {
+        filePath = join(process.env.SHARED_DIR, filePath);
+      }
+      if (!existsSync(filePath)) {
+        res.status(400);
+        throw new Error('requested file does not exists');
       }
       const link = await LinkService.generateUniqueLink(filePath, expirationDate.isValid() ? expirationDate : undefined);
-
       await LinkService.insertLink(link);
-      res.status(200).send(link.getUrl);
+      res.status(200).send(link.getUrl());
       next();
     } catch (err) {
       next(err);
@@ -57,10 +63,17 @@ class LinkController {
     const links: Link[] = [];
     const expirationDate = moment(req.body.expirationDate);
     try {
-      for (const filePath of filePaths) {
-        if (!filePath || !existsSync(filePath)) {
+      for (let filePath of filePaths) {
+        if (!filePath) {
           res.status(400);
-          throw new Error('one or more specified filePaths is invalid');
+          throw new Error('request must contain no empty filePaths');
+        }
+        if (!/^\//gi.test(filePath) && process.env.SHARED_DIR) {
+          filePath = join(process.env.SHARED_DIR, filePath);
+        }
+        if (!existsSync(filePath)) {
+          res.status(400);
+          throw new Error("one or more requested files don't exist");
         }
         const link = await LinkService.generateUniqueLink(filePath, expirationDate.isValid() ? expirationDate : undefined);
         await LinkService.insertLink(link);
