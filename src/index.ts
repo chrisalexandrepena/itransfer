@@ -43,6 +43,12 @@ if (existsSync(join(__dirname, '../.env'))) {
     app.post('/links/generate', (req, res, next) => {
       LinkController.createLinks(req, res, next).catch(next);
     });
+    app.delete('/link/:hash', (req, res, next) => {
+      LinkController.deleteLink(req, res, next).catch(next);
+    });
+    app.delete('/links', (req, res, next) => {
+      LinkController.deleteLinks(req, res, next).catch(next);
+    });
 
     // Log and end request treatment
     app.use(errorLoggerMiddleware);

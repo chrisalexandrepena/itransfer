@@ -5,6 +5,7 @@ import { existsSync, readdirSync, statSync } from 'fs';
 import moment from 'moment';
 import { logger } from '../../../modules/logging';
 import { parse, join } from 'path';
+import { Hash } from 'crypto';
 
 class LinkController {
   async getAllLinks(req: Request, res: Response, next: NextFunction) {
@@ -126,6 +127,45 @@ class LinkController {
 
     res.json(links.map((link) => link.getUrl()));
     next();
+  }
+
+  async deleteLink(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const { hash } = req.params;
+    if (!hash) {
+      res.status(400);
+      next(new Error('no hash specified'));
+    }
+    const link = await LinkService.getLink({ hash });
+    if (!link) {
+      res.status(404);
+      next(new Error('invalid hash'));
+      return;
+    }
+    await LinkService.deleteLink(link);
+    res.end('success');
+    return;
+  }
+
+  async deleteLinks(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const { hashes } = req.query;
+    if (hashes && Array.isArray(hashes)) {
+      for (const hash of hashes) {
+        if (typeof hash === 'string') {
+          const link = await LinkService.getLink({ hash });
+          if (!link) {
+            res.status(404);
+            next(new Error(`invalid hash ${hash}`));
+            return;
+          }
+          await LinkService.deleteLink(link);
+        }
+      }
+    } else {
+      res.status(400);
+      next(new Error('no hash specified'));
+    }
+    res.end('success');
+    return;
   }
 }
 
