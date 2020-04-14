@@ -51,7 +51,9 @@ if (existsSync(join(__dirname, '../.env'))) {
       return;
     });
 
-    app.listen(process.env.PORT || '8080', () => logger.info(`App listening on port ${process.env.PORT || '8080'}`));
+    app.listen(process.env.APP_PORT || '8080', () => {
+      logger.info(`App listening on port ${process.env.APP_PORT || '8080'}`);
+    });
   } catch (err) {
     logger.error(err.message);
   }

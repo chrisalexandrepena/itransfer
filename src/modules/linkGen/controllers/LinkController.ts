@@ -40,7 +40,7 @@ class LinkController {
       const expirationDate = moment(req.body.expirationDate);
       if (!filePath || !existsSync(filePath)) {
         res.status(400);
-        next(new Error('request must contain a valid filePath'));
+        throw new Error('request must contain a valid filePath');
       }
       const link = await LinkService.generateUniqueLink(filePath, expirationDate.isValid() ? expirationDate : undefined);
 
@@ -60,7 +60,7 @@ class LinkController {
       for (const filePath of filePaths) {
         if (!filePath || !existsSync(filePath)) {
           res.status(400);
-          throw new Error('request must contain a valid filePath');
+          throw new Error('one or more specified filePaths is invalid');
         }
         const link = await LinkService.generateUniqueLink(filePath, expirationDate.isValid() ? expirationDate : undefined);
         await LinkService.insertLink(link);

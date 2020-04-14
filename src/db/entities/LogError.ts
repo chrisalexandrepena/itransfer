@@ -15,6 +15,7 @@ export class LogError extends BaseEntity {
   request_meta?: {
     requestMethod: string;
     requestUrl: string;
+    requestBody: any;
     remoteIp: string;
     date: Date;
   };
