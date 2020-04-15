@@ -62,12 +62,12 @@ downloads the file linked to the given *hash*
 returns all available links
 ## POST CALLS
 ### `/link/generate`
-generates a new download link.
+generates a single download link, if multiple paths are submited they will be compressed in a single zip file.
 body params:
-- filePath: *string*
+- filePaths: *string[]*
 - expirationDate: *(optional) ISOstring*
 ### `/links/generate`
-generates multiple links in bulk.
+generates individual links for each submitted paths.
 body params:
 - filePaths: *string[]*
 - expirationDate: *(optional) ISOstring*
