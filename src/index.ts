@@ -8,6 +8,7 @@ import requestIp from 'request-ip';
 import { logger, loggerMiddleware, errorLoggerMiddleware } from './modules/logging';
 import 'colors';
 import LinkController from './modules/linkGen/controllers/LinkController';
+import JobService from './modules/jobs/services/JobService';
 
 if (existsSync(join(__dirname, '../.env'))) {
   dotenv.config({ path: join(__dirname, '../.env') });
@@ -26,6 +27,7 @@ if (existsSync(join(__dirname, '../.env'))) {
     app.use(requestIp.mw());
     app.use(loggerMiddleware);
     await initDb();
+    await JobService.generateAllDeleteJobs();
 
     app.get('/', (req, res, next) => {
       res.send("coucou l'ami");
@@ -60,6 +62,7 @@ if (existsSync(join(__dirname, '../.env'))) {
     app.listen(process.env.APP_PORT || '8080', () => {
       logger.info(`App listening on port ${process.env.APP_PORT || '8080'}`);
     });
+
   } catch (err) {
     logger.log('error', err.stack);
   }

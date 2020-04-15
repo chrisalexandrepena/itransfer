@@ -5,7 +5,7 @@ import { existsSync, readdirSync, statSync } from 'fs';
 import moment from 'moment';
 import { logger } from '../../../modules/logging';
 import { parse, join } from 'path';
-import { Hash } from 'crypto';
+import JobService from '../../../modules/jobs/services/JobService';
 
 class LinkController {
   async getAllLinks(req: Request, res: Response, next: NextFunction) {
@@ -64,11 +64,19 @@ class LinkController {
           await LinkService.insertLink(link);
           links.push(link);
         }
+        for (const link of links) {
+          if (link.expiration_date && link.expiration_date.isAfter(moment())) {
+            JobService.addDeleteLinkJob(link);
+          }
+        }
         res.json(links.map((link) => link.getUrl()));
         next();
       } else {
         const link = await LinkService.generateUniqueLink(filePath, expirationDate.isValid() ? expirationDate : undefined);
         await LinkService.insertLink(link);
+        if (link.expiration_date && link.expiration_date.isAfter(moment())) {
+          JobService.addDeleteLinkJob(link);
+        }
         res.status(200).send(link.getUrl());
         next();
       }
@@ -115,6 +123,11 @@ class LinkController {
           const link = await LinkService.generateUniqueLink(filePath, expirationDate.isValid() ? expirationDate : undefined);
           await LinkService.insertLink(link);
           links.push(link);
+        }
+        for (const link of links) {
+          if (link.expiration_date && link.expiration_date.isAfter(moment())) {
+            JobService.addDeleteLinkJob(link);
+          }
         }
       }
     } catch (err) {
