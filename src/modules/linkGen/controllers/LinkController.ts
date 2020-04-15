@@ -1,11 +1,12 @@
 import LinkService from '../services/LinkService';
-import { Link } from '../../../db/entities/Link';
+import { Link, LinkTypes } from '../../../db/entities/Link';
 import { Request, Response, NextFunction } from 'express';
-import { existsSync, readdirSync, statSync } from 'fs';
 import moment from 'moment';
 import { logger } from '../../../modules/logging';
 import { parse, join } from 'path';
 import JobService from '../../../modules/jobs/services/JobService';
+import PathService from '../services/PathService';
+import { PathTypes } from '../../../db/entities/Path';
 
 class LinkController {
   async getAllLinks(req: Request, res: Response, next: NextFunction) {
@@ -20,114 +21,99 @@ class LinkController {
       next(new Error('no hash specified'));
     }
     const link = await LinkService.getLink({ hash });
+    
     if (!link) {
       res.status(404);
       next(new Error('invalid hash'));
       return;
     }
-    if (!(await link?.fileExists())) {
+    if (!(await link?.isValid())) {
       res.status(500);
       next(new Error('link is invalid, file not found on server'));
       return;
     }
-    logger.info(`${req.clientIp} is downloading file ${parse(link.file).base}`.cyan);
-    res.download(link.file, parse(link.file).base);
+
+    // Launch download
+    if (link?.type === LinkTypes.PATH && link.path) {
+      logger.info(`${req.clientIp} is downloading file ${parse(link.path.path).base}`.cyan);
+      res.download(link.path.path, parse(link.path.path).base);
+    } else if (link?.type === LinkTypes.ZIP && link.zip) {
+      logger.info(`${req.clientIp} is downloading files (in zip):\n${link.zip.paths.map((path) => ` - ${path.name}`).join('\n')}\n`.cyan);
+      res.contentType('application/zip');
+      link.zip.appendZipStreamToRes(res);
+    }
     return;
   }
 
   async createLink(req: Request, res: Response, next: NextFunction): Promise<void> {
-    const links: Link[] = [];
-    try {
-      let { filePath } = req.body;
-      const expirationDate = moment(req.body.expirationDate);
-
-      // Error checks
-      if (!filePath) {
-        res.status(400);
-        throw new Error('request must contain a filePath');
-      }
-      if (!/^\//gi.test(filePath) && process.env.SHARED_DIR) {
-        filePath = join(process.env.SHARED_DIR, filePath);
-      }
-      if (!existsSync(filePath)) {
-        res.status(400);
-        throw new Error('requested file does not exists');
-      }
-
-      // Managing Link
-      if (statSync(filePath).isDirectory()) {
-        const files = readdirSync(filePath)
-          .filter((file) => statSync(join(filePath, file)).isFile())
-          .map((file) => join(filePath, file));
-        for (const file of files) {
-          const link = await LinkService.generateUniqueLink(file, expirationDate.isValid() ? expirationDate : undefined);
-          await LinkService.insertLink(link);
-          links.push(link);
-        }
-        for (const link of links) {
-          if (link.expiration_date && link.expiration_date.isAfter(moment())) {
-            JobService.addDeleteLinkJob(link);
-          }
-        }
-        res.json(links.map((link) => link.getUrl()));
-        next();
-      } else {
-        const link = await LinkService.generateUniqueLink(filePath, expirationDate.isValid() ? expirationDate : undefined);
-        await LinkService.insertLink(link);
-        if (link.expiration_date && link.expiration_date.isAfter(moment())) {
-          JobService.addDeleteLinkJob(link);
-        }
-        res.status(200).send(link.getUrl());
-        next();
-      }
-    } catch (err) {
-      if (links?.length) {
-        for (const link of links) {
-          await LinkService.deleteLink(link);
-        }
-      }
-      next(err);
+    let filePaths: string[] = req.body.filePaths;
+    let link: Link;
+    const expirationDate =
+    moment(req.body.expirationDate).isValid() && moment(req.body.expirationDate).isAfter(moment()) ? moment(req.body.expirationDate) : undefined;
+    
+    // Error checks
+    if (!filePaths) {
+      res.status(400);
+      next(Error('request must contain at least one filePath'));
+      return;
     }
+    filePaths = filePaths.map((filePath) => {
+      if (!/^\//gi.test(filePath) && process.env.SHARED_DIR) {
+        return join(process.env.SHARED_DIR, filePath);
+      }
+      return filePath;
+    });
+    
+    
+    // Generate link
+    const paths = filePaths.map(PathService.generatePath);
+    if (paths.length === 1 && paths[0].type === PathTypes.FILE) {
+      const links = await LinkService.generateUniquePathLinks(paths, expirationDate);
+      link = await LinkService.insertLink(links[0]);
+    } else {
+      const zipLink = await LinkService.generateUniqueZipLink(paths, expirationDate);
+      link = await LinkService.insertLink(zipLink);
+    }
+
+    // Spawn jobs
+    if (expirationDate) {
+      JobService.addDeleteLinkJob(link);
+    }
+
+    // Return link
+    res.end(link.getUrl());
+    return;
   }
 
   async createLinks(req: Request, res: Response, next: NextFunction): Promise<void> {
-    const filePaths: string[] = req.body.filePaths;
+    let filePaths: string[] = req.body.filePaths;
     const links: Link[] = [];
-    const expirationDate = moment(req.body.expirationDate);
-    try {
-      for (let filePath of filePaths) {
-        // Error checks
-        if (!filePath) {
-          res.status(400);
-          throw new Error('request must contain no empty filePaths');
-        }
-        if (!/^\//gi.test(filePath) && process.env.SHARED_DIR) {
-          filePath = join(process.env.SHARED_DIR, filePath);
-        }
-        if (!existsSync(filePath)) {
-          res.status(400);
-          throw new Error("one or more requested files don't exist");
-        }
+    const expirationDate =
+      moment(req.body.expirationDate).isValid() && moment(req.body.expirationDate).isAfter(moment()) ? moment(req.body.expirationDate) : undefined;
 
-        // Managing links
-        if (statSync(filePath).isDirectory()) {
-          const files = readdirSync(filePath)
-            .filter((file) => statSync(join(filePath, file)).isFile())
-            .map((file) => join(filePath, file));
-          for (const file of files) {
-            const link = await LinkService.generateUniqueLink(file, expirationDate.isValid() ? expirationDate : undefined);
-            await LinkService.insertLink(link);
-            links.push(link);
-          }
-        } else {
-          const link = await LinkService.generateUniqueLink(filePath, expirationDate.isValid() ? expirationDate : undefined);
-          await LinkService.insertLink(link);
-          links.push(link);
-        }
-        for (const link of links) {
-          if (link.expiration_date && link.expiration_date.isAfter(moment())) {
-            JobService.addDeleteLinkJob(link);
-          }
+    // Error checks
+    if (!filePaths) {
+      res.status(400);
+      next(Error('request must contain at least one filePath'));
+      return;
+    }
+    filePaths = filePaths.map((filePath) => {
+      if (!/^\//gi.test(filePath) && process.env.SHARED_DIR) {
+        return join(process.env.SHARED_DIR, filePath);
+      }
+      return filePath;
+    });
+
+    // Generate Links
+    try {
+      const paths = filePaths.map(PathService.generatePath);
+      if (paths.length === 1 && paths[0].type === PathTypes.FILE) {
+        const link = await LinkService.generateUniquePathLinks(paths, expirationDate);
+        links.push(await LinkService.insertLink(link[0]));
+      } else {
+        const pathLinks = await LinkService.generateUniquePathLinks(paths, expirationDate);
+        for (const link of pathLinks) {
+          links.push(await LinkService.insertLink(link));
         }
       }
     } catch (err) {
