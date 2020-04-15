@@ -1,8 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, CreateDateColumn, Column, Generated, BaseEntity, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, CreateDateColumn, Column, BaseEntity, OneToOne, JoinColumn, ManyToOne } from 'typeorm';
 import randomstring from 'randomstring';
 import moment, { Moment } from 'moment';
-import LinkRepository from '../../modules/linkGen/repositories/LinkRepository';
-import { existsSync } from 'fs';
+import { Zip } from './Zip';
+import { Path } from './Path';
+
+export enum LinkTypes {
+  'PATH' = 'path',
+  'ZIP' = 'zip',
+}
 
 @Entity()
 export class Link extends BaseEntity {
@@ -12,8 +17,16 @@ export class Link extends BaseEntity {
   @CreateDateColumn({ update: false })
   created_at: Date;
 
-  @Column()
-  file: string;
+  @Column({ type: 'enum', enum: LinkTypes })
+  type: LinkTypes;
+
+  @ManyToOne((type) => Path, { nullable: true })
+  @JoinColumn()
+  path?: Path;
+
+  @ManyToOne((type) => Zip, { nullable: true })
+  @JoinColumn()
+  zip?: Zip;
 
   @Column('timestamptz', { name: 'expiration_date', nullable: true })
   _expiration_date?: Date;
@@ -25,9 +38,15 @@ export class Link extends BaseEntity {
   @Column({ type: 'varchar', unique: true })
   hash: string;
 
-  fileExists() {
-    if (!this.file || !existsSync(this.file)) return false;
-    return true;
+  isValid() {
+    switch (this.type) {
+      case LinkTypes.PATH: {
+        return this.path?.exists();
+      }
+      case LinkTypes.ZIP: {
+        return this.zip?.isValid();
+      }
+    }
   }
 
   getUrl() {
