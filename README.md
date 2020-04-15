@@ -65,10 +65,17 @@ returns all available links
 generates a new download link.
 body params:
 - filePath: *string*
+- expirationDate: *(optional) ISOstring*
 ### `/links/generate`
 generates multiple links in bulk.
 body params:
 - filePaths: *string[]*
+- expirationDate: *(optional) ISOstring*
+## DELETE CALLS
+### `/link/delete/:hash`
+deletes a link
+### `/links/delete?hashes[]=...&hashes[]=...`
+deletes multiple links
 
 # `Known issues`
 The app expects the database to be able to generate uuid fields, sometimes the required addon isn't installed or activated. The package you need is called **postgresql-11-postgis-3** (your version of postgresql and postgis may vary), check that it is installed.
