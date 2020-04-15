@@ -29,10 +29,6 @@ if (existsSync(join(__dirname, '../.env'))) {
     await initDb();
     await JobService.generateAllDeleteJobs();
 
-    app.get('/', (req, res, next) => {
-      res.send("coucou l'ami");
-      next();
-    });
     app.get('/download/:hash', (req, res, next) => {
       LinkController.downloadFile(req, res, next).catch(next);
     });
