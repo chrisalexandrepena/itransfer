@@ -7,8 +7,8 @@ Enjoy ! :heart:
 # `Table of contents`
 
 - [Setup](#setup)
-- [API reference](#api\ reference)
-- [Known issues](#known\ issues)
+- [API reference](#api reference)
+- [Known issues](#known issues)
 
 # `Setup`
 First clone the repository
@@ -83,3 +83,5 @@ You can then activate it using
 ```sh
 psql -d -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
 ```
+When running the app in docker, symlinks wont work unless:
+both the symlinks and their base files are mounted as volumes using the same absolute paths inside and outsite the container.
