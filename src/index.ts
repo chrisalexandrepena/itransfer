@@ -7,7 +7,7 @@ import bodyParser from 'body-parser';
 import requestIp from 'request-ip';
 import { logger, loggerMiddleware, errorLoggerMiddleware } from './modules/logging';
 import 'colors';
-import LinkController from './modules/linkGen/controllers/LinkController';
+import LinkRoutes from './modules/linkGen/routes/LinkRoutes';
 import JobService from './modules/jobs/services/JobService';
 
 if (existsSync(join(__dirname, '../.env'))) {
@@ -29,28 +29,7 @@ if (existsSync(join(__dirname, '../.env'))) {
     await initDb();
     await JobService.generateAllDeleteJobs();
 
-    app.get('/', (req, res, next) => {
-      res.send("coucou l'ami");
-      next();
-    });
-    app.get('/download/:hash', (req, res, next) => {
-      LinkController.downloadFile(req, res, next).catch(next);
-    });
-    app.get('/links', (req, res, next) => {
-      LinkController.getAllLinks(req, res, next).catch(next);
-    });
-    app.post('/link/generate', (req, res, next) => {
-      LinkController.createLink(req, res, next).catch(next);
-    });
-    app.post('/links/generate', (req, res, next) => {
-      LinkController.createLinks(req, res, next).catch(next);
-    });
-    app.delete('/link/:hash', (req, res, next) => {
-      LinkController.deleteLink(req, res, next).catch(next);
-    });
-    app.delete('/links', (req, res, next) => {
-      LinkController.deleteLinks(req, res, next).catch(next);
-    });
+    LinkRoutes.useAllRoutes(app);
 
     // Log and end request treatment
     app.use(errorLoggerMiddleware);
@@ -62,7 +41,6 @@ if (existsSync(join(__dirname, '../.env'))) {
     app.listen(process.env.APP_PORT || '8080', () => {
       logger.info(`App listening on port ${process.env.APP_PORT || '8080'}`);
     });
-
   } catch (err) {
     logger.log('error', err.stack);
   }

@@ -7,8 +7,8 @@ Enjoy ! :heart:
 # `Table of contents`
 
 - [Setup](#setup)
-- [API reference](#api\ reference)
-- [Known issues](#known\ issues)
+- [API reference](#api reference)
+- [Known issues](#known issues)
 
 # `Setup`
 First clone the repository
@@ -62,12 +62,12 @@ downloads the file linked to the given *hash*
 returns all available links
 ## POST CALLS
 ### `/link/generate`
-generates a new download link.
+generates a single download link, if multiple paths are submited they will be compressed in a single zip file.
 body params:
-- filePath: *string*
+- filePaths: *string[]*
 - expirationDate: *(optional) ISOstring*
 ### `/links/generate`
-generates multiple links in bulk.
+generates individual links for each submitted paths.
 body params:
 - filePaths: *string[]*
 - expirationDate: *(optional) ISOstring*
@@ -83,3 +83,5 @@ You can then activate it using
 ```sh
 psql -d -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
 ```
+When running the app in docker, symlinks wont work unless:
+both the symlinks and their base files are mounted as volumes using the same absolute paths inside and outsite the container.
