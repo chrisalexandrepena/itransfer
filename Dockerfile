@@ -1,8 +1,8 @@
 FROM node:14
 ENV SHARED_DIR /data
-ARG POSTGRES_DB=prout
-ARG POSTGRES_USER=caca
-ARG POSTGRES_HOST=pipii
+ARG POSTGRES_DB=itransfer
+ARG POSTGRES_USER=postgres
+ARG POSTGRES_HOST=db
 WORKDIR /app
 
 COPY ./package*.json ./
