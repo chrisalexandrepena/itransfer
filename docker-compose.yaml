@@ -5,28 +5,29 @@ services:
     ports:
       - "5433:5432"
     environment:
-      - POSTGRES_HOST: db
-      - POSTGRES_USER: postgres
-      - POSTGRES_PASSWORD: password
-      - POSTGRES_DB: itransfer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: itransfer
   backend:
     build:
       context: .
       dockerfile: Dockerfile
       args:
+        POSTGRES_HOST: db
+        POSTGRES_USER: postgres
         POSTGRES_DB: itransfer
     ports:
       - "8080:8080"
     volumes:
-      - /absolute/path/to/managed/dir:/data
+      - /home/ubuntu/mydata:/data
     links:
       - db
     environment:
-      - APP_PORT: 8080
-      - ENV: dev|prod
-      - HOST: https://mydomain.com
-      - POSTGRES_PORT: 5432
-      - POSTGRES_HOST: db
-      - POSTGRES_USER: postgres
-      - POSTGRES_PASSWORD: password
-      - POSTGRES_DB: itransfer
+      APP_PORT: 8080
+      ENV: dev
+      HOST: https://mydomain.com
+      POSTGRES_PORT: 5432
+      POSTGRES_HOST: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: itransfer
