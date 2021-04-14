@@ -9,6 +9,14 @@ import PathService from '../services/PathService';
 import { PathTypes } from '../../../db/entities/Path';
 
 class LinkController {
+  checkPath(filePath: string): string {
+    if (!process.env.SHARED_DIR && !/^\//gi.test(filePath)) {
+      throw new Error(`filepath ${filePath} is invalid`)
+    }
+    else if (process.env.SHARED_DIR && !/^\//gi.test(filePath)) return join(process.env.SHARED_DIR, filePath)
+    return filePath
+  }
+
   async getAllLinks(req: Request, res: Response, next: NextFunction) {
     const links = await LinkService.getLinks();
     res.json(links.map((link) => link.getUrl()));
@@ -49,7 +57,7 @@ class LinkController {
     let filePaths: string[] = req.body.filePaths;
     let link: Link;
     const expirationDate =
-    moment(req.body.expirationDate).isValid() && moment(req.body.expirationDate).isAfter(moment()) ? moment(req.body.expirationDate) : undefined;
+      moment(req.body.expirationDate).isValid() && moment(req.body.expirationDate).isAfter(moment()) ? moment(req.body.expirationDate) : undefined;
     
     // Error checks
     if (!filePaths) {
@@ -57,12 +65,12 @@ class LinkController {
       next(Error('request must contain at least one filePath'));
       return;
     }
-    filePaths = filePaths.map((filePath) => {
-      if (!/^\//gi.test(filePath) && process.env.SHARED_DIR) {
-        return join(process.env.SHARED_DIR, filePath);
-      }
-      return filePath;
-    });
+    try {
+      filePaths = filePaths.map(this.checkPath)
+    }catch(e) {
+      res.status(400)
+      next(e)
+    }
     
     
     // Generate link
@@ -97,12 +105,12 @@ class LinkController {
       next(Error('request must contain at least one filePath'));
       return;
     }
-    filePaths = filePaths.map((filePath) => {
-      if (!/^\//gi.test(filePath) && process.env.SHARED_DIR) {
-        return join(process.env.SHARED_DIR, filePath);
-      }
-      return filePath;
-    });
+    try {
+      filePaths = filePaths.map(this.checkPath)
+    }catch(e) {
+      res.status(400)
+      next(e)
+    }
 
     // Generate Links
     try {
