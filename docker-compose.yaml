@@ -3,7 +3,7 @@ services:
   db:
     image: postgres
     ports:
-      - "5433:5432"
+      - "5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -16,6 +16,7 @@ services:
         POSTGRES_HOST: db
         POSTGRES_USER: postgres
         POSTGRES_DB: itransfer
+        SHARED_DIR: /data
     ports:
       - "8080:8080"
     volumes:
@@ -31,3 +32,4 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: itransfer
+      SHARED_DIR: /data
