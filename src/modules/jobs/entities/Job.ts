@@ -16,6 +16,6 @@ export abstract class Job {
       this.task().then(afterCompletion);
     }, Math.min(execDate.diff(moment()), 2147483647));
   }
-  abstract async setTask(...args): Promise<void>;
-  abstract async task(): Promise<void>;
+  abstract setTask(...args): Promise<void>;
+  abstract task(): Promise<void>;
 }
