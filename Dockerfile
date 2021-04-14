@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y postgresql-client
 RUN npm i
 
 COPY . .
-RUN npm i -g typescript && npm run build
+RUN npm i -g typescript && tsc
 
-CMD until pg_isready -q -d ${POSTGRES_DB} -U ${POSTGRES_USER} -h ${POSTGRES_HOST}; do echo "waiting for db ${POSTGRES_DB}..." && sleep 5 ; done && echo "db is ready!" && npm start
+CMD until pg_isready -q -d ${POSTGRES_DB} -U ${POSTGRES_USER} -h ${POSTGRES_HOST}; do echo "waiting for db ${POSTGRES_DB}..." && sleep 5 ; done && \
+echo "db is ready!" && \
+npm run typeorm migration:run && \
+npm start
